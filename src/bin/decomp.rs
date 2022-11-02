@@ -29,10 +29,16 @@ fn main() -> std::io::Result<()> {
 
     let mut samples = 0;
     let mut bytes = 0;
+    let mut lines = 0;
 
     while below_limit(samples, args.max_samples) && below_limit(bytes, args.max_bytes) {
         line.clear();
         reader.read_line(&mut line)?;
+
+        if line.is_empty() {
+            // EOF reached
+            break;
+        }
 
         let sample: Sample = serde_json::from_str(&line)?;
 
@@ -40,9 +46,13 @@ fn main() -> std::io::Result<()> {
 
         samples += 1;
         bytes += sample.text.len();
+        lines += sample.text.lines().count();
     }
 
     writer.flush()?;
+
+    println!("Decompressed {samples} samples, {lines} lines, {bytes} bytes");
+
     Ok(())
 }
 
