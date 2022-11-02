@@ -15,7 +15,8 @@ fn main() -> std::io::Result<()> {
     let path = r"C:\Users\Karel\Desktop\the-pile\00.jsonl.zst";
 
     let max_tokens = 8 * 1024;
-    let count_threshold = 50_000;
+    let count_threshold = 10_000;
+    let samples_threshold = 100;
     let count_decay: f32 = 0.99;
 
     let mut tokens = (0..u8::MAX).map(|x| vec![x]).collect_vec();
@@ -64,7 +65,7 @@ fn main() -> std::io::Result<()> {
             prev_token = Some(curr_token);
         }
 
-        if top_count >= count_threshold {
+        if top_count >= count_threshold && samples_since_add >= samples_threshold {
             println!(
                 "Adding new token after {} samples, {} tokens, {} count",
                 samples_since_add, tokens_since_add, top_count
