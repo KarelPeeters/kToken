@@ -10,10 +10,12 @@ use byte_pair_encoding::sample::SampleReader;
 
 fn main() -> std::io::Result<()> {
     // let path = r"C:\Users\Karel\Desktop\the-pile\test.jsonl.zst";
-    let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";
+    // let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";
+    let path = r"C:\Users\Karel\Desktop\the-pile\00.jsonl.zst";
 
-    let max_tokens = 1024;
-    let count_threshold = 100_000;
+    let max_tokens = 8 * 1024;
+    let count_threshold = 50_000;
+    let count_decay: f32 = 0.99;
 
     let reader = BufReader::new(Decoder::new(File::open(&path)?)?);
 
@@ -69,9 +71,10 @@ fn main() -> std::io::Result<()> {
 
                 let new_token = [tokens[top_a].as_slice(), tokens[top_b].as_slice()].concat();
                 println!(
-                    "Adding token {}: {:?} with count {}",
+                    "Adding token {}: {:?} {:?} with count {}",
                     tokens.len(),
                     String::from_utf8_lossy(&new_token),
+                    new_token,
                     top_count
                 );
 
@@ -90,7 +93,7 @@ fn main() -> std::io::Result<()> {
             top_index = None;
 
             // decay top counts to ensure old tokens go away over time
-            bigram_count.mapv_inplace(|c| c * 9 / 10);
+            bigram_count.mapv_inplace(|c| (c as f32 * count_decay) as u32);
         }
 
         if tokens.len() >= max_tokens {
