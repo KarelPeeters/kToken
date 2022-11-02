@@ -2,6 +2,8 @@ use std::io::BufRead;
 
 use serde::Deserialize;
 
+use crate::unicode::str_is_ltr;
+
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Sample {
@@ -18,27 +20,37 @@ pub struct Meta {
 pub struct SampleReader<R: BufRead> {
     reader: R,
     line: String,
+    remove_rtl: bool,
 }
 
 impl<R: BufRead> SampleReader<R> {
-    pub fn new(reader: R) -> Self {
+    pub fn new(reader: R, remove_rtl: bool) -> Self {
         Self {
             reader,
             line: String::new(),
+            remove_rtl,
         }
     }
 
     fn next_io(&mut self) -> std::io::Result<Option<Sample>> {
-        self.line.clear();
-        self.reader.read_line(&mut self.line)?;
+        loop {
+            self.line.clear();
+            self.reader.read_line(&mut self.line)?;
 
-        if self.line.is_empty() {
-            // EOF reached
-            return Ok(None);
+            if self.line.is_empty() {
+                // EOF reached
+                return Ok(None);
+            }
+
+            let sample: Sample = serde_json::from_str(&self.line)?;
+
+            if self.remove_rtl && !str_is_ltr(&sample.text) {
+                // skip RTL text
+                continue;
+            }
+
+            return Ok(Some(sample));
         }
-
-        let sample: Sample = serde_json::from_str(&self.line)?;
-        Ok(Some(sample))
     }
 }
 

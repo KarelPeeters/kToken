@@ -29,7 +29,7 @@ fn main() -> std::io::Result<()> {
     let mut bytes = 0;
     let mut lines = 0;
 
-    for sample in SampleReader::new(reader) {
+    for sample in SampleReader::new(reader, true) {
         let sample = sample?;
 
         writer.write_all(sample.text.as_bytes())?;

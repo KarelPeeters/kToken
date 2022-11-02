@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
     let mut diff_sample_count = 0;
     let mut rtl_sample_count = 0;
 
-    for sample in SampleReader::new(reader) {
+    for sample in SampleReader::new(reader, false) {
         let sample = sample?;
 
         text.clear();
