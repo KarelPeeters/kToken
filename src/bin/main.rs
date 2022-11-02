@@ -1,11 +1,9 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use byte_pair_encoding::{str_is_ltr, Sample};
+use byte_pair_encoding::sample::Sample;
+use byte_pair_encoding::unicode::str_is_ltr;
 use itertools::izip;
-use serde::Deserialize;
-use unicode_bidi::{bidi_class, BidiClass};
-use unicode_normalization::UnicodeNormalization;
 use zstd::stream::read::Decoder;
 
 fn main() -> std::io::Result<()> {

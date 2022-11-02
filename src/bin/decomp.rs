@@ -2,10 +2,9 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 
+use byte_pair_encoding::sample::Sample;
 use clap::Parser;
 use zstd::Decoder;
-
-use byte_pair_encoding::Sample;
 
 #[derive(Parser)]
 struct Args {
