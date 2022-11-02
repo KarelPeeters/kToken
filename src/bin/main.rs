@@ -1,16 +1,18 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::BufReader;
 
-use byte_pair_encoding::sample::Sample;
-use byte_pair_encoding::unicode::str_is_ltr;
 use itertools::izip;
+use unicode_normalization::UnicodeNormalization;
 use zstd::stream::read::Decoder;
+
+use byte_pair_encoding::sample::SampleReader;
+use byte_pair_encoding::unicode::str_is_ltr;
 
 fn main() -> std::io::Result<()> {
     let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";
     // let path = r"\\192.168.0.10\Documents\Download\the-pile\test.jsonl.zst";
 
-    let mut reader = BufReader::new(Decoder::new(File::open(path)?)?);
+    let reader = BufReader::new(Decoder::new(File::open(path)?)?);
 
     // let mut writer_concatenated = BufWriter::new(File::create("ignored/concatenated.txt")?);
     // let mut writer_decompressed = BufWriter::new(File::create("ignored/decompressed.txt")?);
@@ -20,18 +22,14 @@ fn main() -> std::io::Result<()> {
     // writer.flush()?;
     // return Ok(());
 
-    let mut line = String::new();
     let mut text = String::new();
 
     let mut sample_count = 0;
     let mut diff_sample_count = 0;
     let mut rtl_sample_count = 0;
 
-    loop {
-        line.clear();
-        reader.read_line(&mut line)?;
-
-        let sample: Sample = serde_json::from_str(&line)?;
+    for sample in SampleReader::new(reader) {
+        let sample = sample?;
 
         text.clear();
         text.extend(sample.text.nfc());
@@ -71,4 +69,6 @@ fn main() -> std::io::Result<()> {
             );
         }
     }
+
+    Ok(())
 }
