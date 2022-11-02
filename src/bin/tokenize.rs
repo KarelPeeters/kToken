@@ -6,6 +6,7 @@ use itertools::Itertools;
 use ndarray::Array2;
 use zstd::Decoder;
 
+use byte_pair_encoding::iter::FlatRepeatResult;
 use byte_pair_encoding::sample::SampleReader;
 
 fn main() -> std::io::Result<()> {
@@ -16,8 +17,6 @@ fn main() -> std::io::Result<()> {
     let max_tokens = 8 * 1024;
     let count_threshold = 50_000;
     let count_decay: f32 = 0.99;
-
-    let reader = BufReader::new(Decoder::new(File::open(&path)?)?);
 
     let mut tokens = (0..u8::MAX).map(|x| vec![x]).collect_vec();
     let mut is_whitespace = (0..u8::MAX)
@@ -32,8 +31,15 @@ fn main() -> std::io::Result<()> {
 
     let mut aho = build_ac(&tokens);
 
-    for sample in SampleReader::new(reader, true) {
-        let sample = sample?;
+    let sample_iter = FlatRepeatResult::new(|| -> std::io::Result<_> {
+        Ok(SampleReader::new(
+            BufReader::new(Decoder::new(File::open(&path)?)?),
+            true,
+        ))
+    });
+
+    for sample in sample_iter {
+        let sample = sample??;
         samples_since_add += 1;
 
         let mut prev_token: Option<usize> = None;
