@@ -1,6 +1,16 @@
 [package]
-name = "BytePairEncoding"
+name = "byte_pair_encoding"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+zstd = "0.11.2"
+
+itertools = "0.10.5"
+
+clap = { version = "4.0.18", features = ["derive"] }
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.87"
+
+unicode-normalization = "0.1.22"
+unicode-bidi = "0.3.8"
