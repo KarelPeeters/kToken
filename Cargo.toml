@@ -16,3 +16,6 @@ serde_json = "1.0.87"
 
 unicode-normalization = "0.1.22"
 unicode-bidi = "0.3.8"
+
+[profile.release]
+debug = true
