@@ -1,15 +1,41 @@
 use std::cmp::min;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
+use clap::Parser;
 use itertools::Itertools;
 use ndarray::{s, Array2};
+use serde::Serialize;
 use zstd::Decoder;
 
 use byte_pair_encoding::iter::FlatRepeatResult;
 use byte_pair_encoding::sample::SampleReader;
+
+#[derive(Debug, Parser, Serialize)]
+struct Args {
+    input: PathBuf,
+    output: PathBuf,
+
+    #[clap(long, default_value_t = 1024)]
+    tokens: usize,
+
+    #[clap(long, default_value_t = 10000)]
+    threshold_count: u32,
+    #[clap(long, default_value_t = 100)]
+    threshold_samples: u32,
+
+    #[clap(long, default_value_t = 0.99)]
+    count_decay: f32,
+}
+
+#[derive(Debug, Serialize)]
+struct Output {
+    args: Args,
+    tokens: Vec<Vec<u8>>,
+}
 
 // TODO remove tokens that are no longer used since they became part of the larger token?
 //    eg. maybe we don't need "havi" any more after we have "having"
@@ -25,37 +51,41 @@ use byte_pair_encoding::sample::SampleReader;
 type Count = u32;
 
 fn main() -> std::io::Result<()> {
-    // let path = r"C:\Users\Karel\Desktop\the-pile\test.jsonl.zst";
-    // let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";
-    let path = r"C:\Users\Karel\Desktop\the-pile\00.jsonl.zst";
-    let vocab_path = r"ignored/vocab.json";
+    let args: Args = Args::parse();
+    println!("Args: {:#?}", args);
 
-    let max_tokens = 1 * 1024;
-    let count_threshold = 10_000;
-    let samples_threshold = 200;
-    let count_decay_numerator: u32 = 98;
-    let count_decay_denominator: u32 = 100;
+    assert_eq!("zst", args.input.extension().unwrap());
+    assert_eq!("json", args.output.extension().unwrap());
+    std::fs::create_dir_all(args.output.parent().unwrap())?;
 
-    assert!(count_threshold < Count::MAX);
+    let max_tokens = args.tokens;
+    let threshold_count = args.threshold_count;
+    let threshold_samples = args.threshold_samples;
+    assert!(threshold_count < Count::MAX);
 
+    assert!((0.0..1.0).contains(&args.count_decay));
+    let count_decay_numerator: u32 = (args.count_decay * 1000.0) as u32;
+    let count_decay_denominator: u32 = 1000;
+
+    // start with a token for each possible byte
     let mut tokens = (0..u8::MAX).map(|x| vec![x]).collect_vec();
     let mut is_whitespace = (0..u8::MAX)
         .map(|c| (c as char).is_whitespace())
         .collect_vec();
 
+    let mut aho = build_ac(&tokens);
+
+    let mut bigram_count: Array2<Count> = Array2::zeros((max_tokens, max_tokens));
     let mut tokens_since_add = 0;
     let mut samples_since_add = 0;
     let mut top_count = 0;
     let mut top_index = None;
-    let mut bigram_count: Array2<Count> = Array2::zeros((max_tokens, max_tokens));
     let mut prev_time = Instant::now();
-
-    let mut aho = build_ac(&tokens);
 
     let sample_iter = FlatRepeatResult::new(|| -> std::io::Result<_> {
         println!("Start decoding from start of file");
         Ok(SampleReader::new(
-            BufReader::new(Decoder::new(File::open(&path)?)?),
+            BufReader::new(Decoder::new(File::open(&args.input)?)?),
             true,
         ))
     });
@@ -86,7 +116,7 @@ fn main() -> std::io::Result<()> {
             prev_token = Some(curr_token);
         }
 
-        if top_count >= count_threshold && samples_since_add >= samples_threshold {
+        if top_count >= threshold_count && samples_since_add >= threshold_samples {
             println!(
                 "Adding new token after {} samples, {} tokens, {} count",
                 samples_since_add, tokens_since_add, top_count
@@ -129,7 +159,7 @@ fn main() -> std::io::Result<()> {
             bigram_count
                 .slice_mut(s![..tokens.len(), ..tokens.len()])
                 .mapv_inplace(|c| {
-                    let clipped = min(c, count_threshold);
+                    let clipped = min(c, threshold_count);
                     let scaled = clipped as u32 * count_decay_numerator / count_decay_denominator;
                     scaled as Count
                 });
@@ -140,10 +170,6 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    let mut vocab_writer = BufWriter::new(File::create(vocab_path)?);
-    serde_json::to_writer(&mut vocab_writer, &tokens)?;
-    vocab_writer.flush()?;
-
     println!("Final tokens:");
     for token in &tokens {
         if let Ok(token) = std::str::from_utf8(token) {
@@ -152,6 +178,12 @@ fn main() -> std::io::Result<()> {
             println!("  {:?}", token);
         }
     }
+
+    println!("Writing output file");
+    let mut vocab_writer = BufWriter::new(File::create(&args.output)?);
+    let output = Output { args, tokens };
+    serde_json::to_writer(&mut vocab_writer, &output)?;
+    vocab_writer.flush()?;
 
     Ok(())
 }
