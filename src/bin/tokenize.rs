@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter, Write};
 use std::time::Instant;
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
@@ -11,15 +11,29 @@ use zstd::Decoder;
 use byte_pair_encoding::iter::FlatRepeatResult;
 use byte_pair_encoding::sample::SampleReader;
 
+// TODO remove tokens that are no longer used since they became part of the larger token?
+//    eg. maybe we don't need "havi" any more after we have "having"
+// TODO prevent merging between punctuation and word characters (and digits?)
+//    eg. "tion." is not great
+//    be careful to still allow things like "we'll"?
+// TODO merge space into word like in GPT? (allowing us to almost halve the amount of tokens for a given sentence!)
+//    eg  ["hello", " ", "there"] vs ["hello_", "there"]
+//    maybe think of tokens as continuation by default, eg. ["hel", "_lo"]
+//    and the rule is "every token that does not start with "_" and is not preceded by a whitespace token was preceded by a single space
+//    meh, all of this is messy, ad-hoc and most importantly non-zero!
+
+type Count = u32;
+
 fn main() -> std::io::Result<()> {
     // let path = r"C:\Users\Karel\Desktop\the-pile\test.jsonl.zst";
     // let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";
     let path = r"C:\Users\Karel\Desktop\the-pile\00.jsonl.zst";
+    let vocab_path = r"ignored/vocab.json";
 
-    let max_tokens = 64 * 1024;
+    let max_tokens = 1 * 1024;
     let count_threshold = 10_000;
-    let samples_threshold = 100;
-    let count_decay_numerator: u32 = 99;
+    let samples_threshold = 200;
+    let count_decay_numerator: u32 = 98;
     let count_decay_denominator: u32 = 100;
 
     assert!(count_threshold < Count::MAX);
@@ -39,6 +53,7 @@ fn main() -> std::io::Result<()> {
     let mut aho = build_ac(&tokens);
 
     let sample_iter = FlatRepeatResult::new(|| -> std::io::Result<_> {
+        println!("Start decoding from start of file");
         Ok(SampleReader::new(
             BufReader::new(Decoder::new(File::open(&path)?)?),
             true,
@@ -109,6 +124,8 @@ fn main() -> std::io::Result<()> {
             top_index = None;
 
             // clip and decay counts to ensure old tokens go away over time
+            // TODO can we do this lazily while incrementing?
+            //    keep a last_seen index per bigram, when visiting decay as appropriate
             bigram_count
                 .slice_mut(s![..tokens.len(), ..tokens.len()])
                 .mapv_inplace(|c| {
@@ -122,6 +139,10 @@ fn main() -> std::io::Result<()> {
             break;
         }
     }
+
+    let mut vocab_writer = BufWriter::new(File::create(vocab_path)?);
+    serde_json::to_writer(&mut vocab_writer, &tokens)?;
+    vocab_writer.flush()?;
 
     println!("Final tokens:");
     for token in &tokens {
