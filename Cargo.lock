@@ -221,6 +221,7 @@ dependencies = [
 name = "kt-py"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "flume",
  "kt-core",
  "numpy",

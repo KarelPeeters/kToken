@@ -1,9 +1,8 @@
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
 use clap::Parser;
-use zstd::Decoder;
 
 use kt_core::sample::SampleReader;
 
@@ -22,14 +21,14 @@ fn main() -> std::io::Result<()> {
     let args = Args::parse();
     assert_ne!(args.input, args.output);
 
-    let reader = BufReader::new(Decoder::new(File::open(&args.input)?)?);
+    let file = File::open(&args.input)?;
     let mut writer = BufWriter::new(File::create(&args.output)?);
 
     let mut samples = 0;
     let mut bytes = 0;
     let mut lines = 0;
 
-    for sample in SampleReader::new(reader, true) {
+    for sample in SampleReader::new_decode(file, true)? {
         let sample = sample?;
 
         writer.write_all(sample.text.as_bytes())?;

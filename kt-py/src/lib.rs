@@ -1,13 +1,120 @@
+use std::fs::File;
+use std::io::ErrorKind;
+use std::path::PathBuf;
+
+use flume::{Receiver, RecvError, SendError, Sender};
+use numpy::PyArray2;
 use pyo3::prelude::*;
 
-#[pyfunction]
-fn foo(x: i64) -> i64 {
-    -x
-}
+use kt_core::batch::{Batch, Batcher};
+use kt_core::sample::SampleReader;
 
-/// A Python module implemented in Rust.
 #[pymodule]
 fn ktoken(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(foo, m)?)?;
+    m.add_class::<BatchTokenReader>()?;
+    Ok(())
+}
+
+#[pyclass]
+struct BatchTokenReader {
+    receiver: Receiver<Message>,
+}
+
+enum Message {
+    Batch(Batch),
+    Error(std::io::Error),
+}
+
+#[pymethods]
+impl BatchTokenReader {
+    #[new]
+    fn new(
+        tokens: Vec<Vec<u8>>,
+        data_paths: Vec<PathBuf>,
+        batch_size: usize,
+        seq_len: usize,
+        bucket_count: usize,
+    ) -> PyResult<Self> {
+        for path in &data_paths {
+            if !path.exists() {
+                return Err(std::io::Error::new(
+                    ErrorKind::NotFound,
+                    format!("Data path {:?} does not exist", path),
+                )
+                .into());
+            }
+        }
+
+        let batcher = Batcher::new(batch_size, seq_len, bucket_count, tokens);
+        let (sender, receiver) = flume::bounded(4);
+
+        std::thread::Builder::new()
+            .name(String::from("BatchTokenReader"))
+            .spawn(move || batcher_thread_main(batcher, sender, data_paths))?;
+
+        Ok(BatchTokenReader { receiver })
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__<'py>(&mut self, py: Python<'py>) -> PyResult<Option<&'py PyArray2<i32>>> {
+        let batch = match self.receiver.recv() {
+            Ok(Message::Batch(batch)) => batch,
+            Ok(Message::Error(err)) => return Err(err.into()),
+            Err(RecvError::Disconnected) => return Ok(None),
+        };
+
+        Ok(Some(PyArray2::from_owned_array(py, batch.tokens)))
+    }
+}
+
+fn batcher_thread_main(batcher: Batcher, sender: Sender<Message>, data_paths: Vec<PathBuf>) {
+    match batcher_thread_main_inner(batcher, &sender, data_paths) {
+        Ok(()) => {}
+        Err(err) => {
+            // ignore errors caused by the sender, we're already closing everything anyway
+            let _ = sender.send(Message::Error(err));
+        }
+    };
+
+    // drop & close sender
+    drop(sender);
+}
+
+fn batcher_thread_main_inner(
+    mut batcher: Batcher,
+    sender: &Sender<Message>,
+    data_paths: Vec<PathBuf>,
+) -> std::io::Result<()> {
+    loop {
+        let mut all_empty = true;
+
+        for path in &data_paths {
+            let file = File::open(path)?;
+            for sample in SampleReader::new_decode(file, true)? {
+                let sample = sample?;
+
+                if batcher.push_sample(&sample.text) {
+                    all_empty = false;
+                }
+
+                while let Some(batch) = batcher.pop_batch() {
+                    match sender.send(Message::Batch(batch)) {
+                        Ok(()) => {}
+                        // receiver got closed, we can stop as well
+                        Err(SendError(_)) => break,
+                    }
+                }
+            }
+        }
+
+        // none of the files (if any) contain a sample, break infinite loop
+        if all_empty {
+            break;
+        }
+    }
+
     Ok(())
 }

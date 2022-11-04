@@ -1,9 +1,7 @@
 use std::fs::File;
-use std::io::BufReader;
 
 use itertools::izip;
 use unicode_normalization::UnicodeNormalization;
-use zstd::stream::read::Decoder;
 
 use kt_core::sample::SampleReader;
 use kt_core::unicode::str_is_ltr;
@@ -11,8 +9,6 @@ use kt_core::unicode::str_is_ltr;
 fn main() -> std::io::Result<()> {
     let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";
     // let path = r"\\192.168.0.10\Documents\Download\the-pile\test.jsonl.zst";
-
-    let reader = BufReader::new(Decoder::new(File::open(path)?)?);
 
     // let mut writer_concatenated = BufWriter::new(File::create("ignored/concatenated.txt")?);
     // let mut writer_decompressed = BufWriter::new(File::create("ignored/decompressed.txt")?);
@@ -28,7 +24,9 @@ fn main() -> std::io::Result<()> {
     let mut diff_sample_count = 0;
     let mut rtl_sample_count = 0;
 
-    for sample in SampleReader::new(reader, false) {
+    let file = File::open(path)?;
+
+    for sample in SampleReader::new_decode(file, false)? {
         let sample = sample?;
 
         text.clear();

@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -9,7 +9,6 @@ use clap::Parser;
 use itertools::Itertools;
 use ndarray::{s, Array2};
 use serde::Serialize;
-use zstd::Decoder;
 
 use kt_core::iter::FlatRepeatResult;
 use kt_core::sample::SampleReader;
@@ -84,10 +83,7 @@ fn main() -> std::io::Result<()> {
 
     let sample_iter = FlatRepeatResult::new(|| -> std::io::Result<_> {
         println!("Start decoding from start of file");
-        Ok(SampleReader::new(
-            BufReader::new(Decoder::new(File::open(&args.input)?)?),
-            true,
-        ))
+        Ok(SampleReader::new_decode(File::open(&args.input)?, true)?)
     });
 
     for sample in sample_iter {

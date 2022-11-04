@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::collections::VecDeque;
 
-use aho_corasick::AhoCorasick;
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use ndarray::Array2;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -10,7 +10,7 @@ pub struct Batcher {
     // settings
     batch_size: usize,
     seq_len: usize,
-    mix_bucket_count: usize,
+    bucket_count: usize,
     aho: AhoCorasick,
 
     // state
@@ -44,16 +44,20 @@ pub struct Bucket {
 }
 
 impl Batcher {
-    pub fn new(
-        batch_size: usize,
-        seq_len: usize,
-        mix_bucket_count: usize,
-        aho: AhoCorasick,
-    ) -> Self {
+    pub fn new<I, P>(batch_size: usize, seq_len: usize, bucket_count: usize, tokens: I) -> Self
+    where
+        I: IntoIterator<Item = P>,
+        P: AsRef<[u8]>,
+    {
+        let aho = AhoCorasickBuilder::new()
+            .match_kind(MatchKind::LeftmostLongest)
+            .dfa(true)
+            .build(tokens);
+
         Self {
             batch_size,
             seq_len,
-            mix_bucket_count,
+            bucket_count,
             aho,
             rng: SmallRng::from_entropy(),
             stats: Stats::default(),
@@ -62,10 +66,10 @@ impl Batcher {
         }
     }
 
-    pub fn push_sample(&mut self, sample: &str) {
+    pub fn push_sample(&mut self, sample: &str) -> bool {
         // don't even bother with empty sequences, they would create empty buckets
         if sample.is_empty() {
-            return;
+            return false;
         }
 
         // pick a buffer to put the sequences into
@@ -99,10 +103,12 @@ impl Batcher {
         // update stats
         self.stats.sample_count += 1;
         self.stats.token_count += parsed_token_count;
+
+        true
     }
 
     pub fn pop_batch(&mut self) -> Option<Batch> {
-        if self.buckets.len() < self.mix_bucket_count {
+        if self.buckets.len() < self.bucket_count {
             return None;
         }
 

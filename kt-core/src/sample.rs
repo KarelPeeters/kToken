@@ -1,6 +1,7 @@
-use std::io::BufRead;
+use std::io::{BufRead, BufReader, Read};
 
 use serde::Deserialize;
+use zstd::Decoder;
 
 use crate::unicode::str_is_ltr;
 
@@ -21,6 +22,12 @@ pub struct SampleReader<R: BufRead> {
     reader: R,
     line: String,
     remove_rtl: bool,
+}
+
+impl<R: Read> SampleReader<BufReader<Decoder<'static, BufReader<R>>>> {
+    pub fn new_decode(reader: R, remove_rtl: bool) -> std::io::Result<Self> {
+        Ok(Self::new(BufReader::new(Decoder::new(reader)?), remove_rtl))
+    }
 }
 
 impl<R: BufRead> SampleReader<R> {
