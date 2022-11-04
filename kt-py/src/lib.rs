@@ -34,6 +34,7 @@ impl BatchTokenReader {
         batch_size: usize,
         seq_len: usize,
         bucket_count: usize,
+        queue_size: usize,
     ) -> PyResult<Self> {
         for path in &data_paths {
             if !path.exists() {
@@ -46,7 +47,7 @@ impl BatchTokenReader {
         }
 
         let batcher = Batcher::new(batch_size, seq_len, bucket_count, tokens);
-        let (sender, receiver) = flume::bounded(4);
+        let (sender, receiver) = flume::bounded(queue_size);
 
         std::thread::Builder::new()
             .name(String::from("BatchTokenReader"))

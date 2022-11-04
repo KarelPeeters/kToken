@@ -8,7 +8,7 @@ class BatchTokenReader:
             self,
             tokens: List[List[int]], data_paths: List[str],
             batch_size: int, seq_len: int,
-            bucket_count: int
+            bucket_count: int, queue_size: int,
     ): ...
 
     def __iter__(self) -> BatchTokenReader: ...
