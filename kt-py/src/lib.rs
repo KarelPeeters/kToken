@@ -8,6 +8,7 @@ use itertools::Itertools;
 use numpy::IntoPyArray;
 use numpy::{PyArray1, PyArray2};
 use pyo3::prelude::*;
+use unicode_normalization::UnicodeNormalization;
 
 use kt_core::batch::{build_tokenizer, Batch, Batcher};
 use kt_core::sample::SampleReader;
@@ -39,8 +40,12 @@ impl Tokenizer {
     }
 
     fn tokenize<'py>(&self, py: Python<'py>, s: &str) -> &'py PyArray1<i32> {
+        // unicode normalization
+        let s_norm = s.nfc().collect::<String>();
+
+        // actual tokenization
         self.aho
-            .find_iter(s)
+            .find_iter(&s_norm)
             .map(|m| m.pattern() as i32)
             .collect_vec()
             .into_pyarray(py)

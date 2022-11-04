@@ -16,3 +16,4 @@ pyo3 = { version = "0.17.1", features = ["extension-module"] }
 flume = "0.10.14"
 itertools = "0.10.5"
 aho-corasick = "0.7.19"
+unicode-normalization = "0.1.22"

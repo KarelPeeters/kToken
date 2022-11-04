@@ -227,6 +227,7 @@ dependencies = [
  "kt-core",
  "numpy",
  "pyo3",
+ "unicode-normalization",
 ]
 
 [[package]]
