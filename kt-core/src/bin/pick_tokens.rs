@@ -11,8 +11,8 @@ use ndarray::{s, Array2};
 use serde::Serialize;
 use zstd::Decoder;
 
-use byte_pair_encoding::iter::FlatRepeatResult;
-use byte_pair_encoding::sample::SampleReader;
+use kt_core::iter::FlatRepeatResult;
+use kt_core::sample::SampleReader;
 
 #[derive(Debug, Parser, Serialize)]
 struct Args {

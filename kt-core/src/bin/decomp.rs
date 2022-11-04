@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use zstd::Decoder;
 
-use byte_pair_encoding::sample::SampleReader;
+use kt_core::sample::SampleReader;
 
 #[derive(Parser)]
 struct Args {

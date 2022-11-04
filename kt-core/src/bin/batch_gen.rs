@@ -7,13 +7,12 @@ use std::io::BufReader;
 use std::time::Instant;
 
 use aho_corasick::{AhoCorasickBuilder, MatchKind};
+use kt_core::sample::SampleReader;
 use ndarray::Array2;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use serde::Deserialize;
 use zstd::Decoder;
-
-use byte_pair_encoding::sample::SampleReader;
 
 #[derive(Debug, Deserialize)]
 struct Tokens {

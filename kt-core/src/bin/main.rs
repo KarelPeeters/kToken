@@ -5,8 +5,8 @@ use itertools::izip;
 use unicode_normalization::UnicodeNormalization;
 use zstd::stream::read::Decoder;
 
-use byte_pair_encoding::sample::SampleReader;
-use byte_pair_encoding::unicode::str_is_ltr;
+use kt_core::sample::SampleReader;
+use kt_core::unicode::str_is_ltr;
 
 fn main() -> std::io::Result<()> {
     let path = r"\\192.168.0.10\Documents\Download\the-pile\00.jsonl.zst";

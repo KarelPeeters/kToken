@@ -1,8 +1,7 @@
 use std::ops::RangeInclusive;
 
+use kt_core::unicode::class_is_ltr;
 use unicode_bidi::bidi_class;
-
-use byte_pair_encoding::unicode::class_is_ltr;
 
 fn main() {
     let mut rtl = 0;
