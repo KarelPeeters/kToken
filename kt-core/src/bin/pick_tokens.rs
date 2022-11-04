@@ -83,7 +83,11 @@ fn main() -> std::io::Result<()> {
 
     let sample_iter = FlatRepeatResult::new(|| -> std::io::Result<_> {
         println!("Start decoding from start of file");
-        Ok(SampleReader::new_decode(File::open(&args.input)?, true)?)
+        Ok(SampleReader::new_decode(
+            File::open(&args.input)?,
+            true,
+            true,
+        )?)
     });
 
     for sample in sample_iter {

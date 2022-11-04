@@ -1,6 +1,7 @@
 use std::io::{BufRead, BufReader, Read};
 
 use serde::Deserialize;
+use unicode_normalization::UnicodeNormalization;
 use zstd::Decoder;
 
 use crate::unicode::str_is_ltr;
@@ -22,20 +23,26 @@ pub struct SampleReader<R: BufRead> {
     reader: R,
     line: String,
     remove_rtl: bool,
+    normalize: bool,
 }
 
 impl<R: Read> SampleReader<BufReader<Decoder<'static, BufReader<R>>>> {
-    pub fn new_decode(reader: R, remove_rtl: bool) -> std::io::Result<Self> {
-        Ok(Self::new(BufReader::new(Decoder::new(reader)?), remove_rtl))
+    pub fn new_decode(reader: R, remove_rtl: bool, normalize: bool) -> std::io::Result<Self> {
+        Ok(Self::new(
+            BufReader::new(Decoder::new(reader)?),
+            remove_rtl,
+            normalize,
+        ))
     }
 }
 
 impl<R: BufRead> SampleReader<R> {
-    pub fn new(reader: R, remove_rtl: bool) -> Self {
+    pub fn new(reader: R, remove_rtl: bool, normalize: bool) -> Self {
         Self {
             reader,
             line: String::new(),
             remove_rtl,
+            normalize,
         }
     }
 
@@ -49,11 +56,16 @@ impl<R: BufRead> SampleReader<R> {
                 return Ok(None);
             }
 
-            let sample: Sample = serde_json::from_str(&self.line)?;
+            let mut sample: Sample = serde_json::from_str(&self.line)?;
 
             if self.remove_rtl && !str_is_ltr(&sample.text) {
                 // skip RTL text
                 continue;
+            }
+
+            if self.normalize {
+                let text = sample.text.nfc().collect::<String>();
+                sample.text = text;
             }
 
             return Ok(Some(sample));

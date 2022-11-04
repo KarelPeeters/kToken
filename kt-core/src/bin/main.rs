@@ -26,7 +26,7 @@ fn main() -> std::io::Result<()> {
 
     let file = File::open(path)?;
 
-    for sample in SampleReader::new_decode(file, false)? {
+    for sample in SampleReader::new_decode(file, false, false)? {
         let sample = sample?;
 
         text.clear();

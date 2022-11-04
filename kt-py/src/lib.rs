@@ -121,7 +121,7 @@ fn batcher_thread_main_inner(
 
         for path in &data_paths {
             let file = File::open(path)?;
-            for sample in SampleReader::new_decode(file, true)? {
+            for sample in SampleReader::new_decode(file, true, true)? {
                 let sample = sample?;
 
                 if batcher.push_sample(&sample.text) {

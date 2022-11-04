@@ -26,7 +26,7 @@ fn main() -> std::io::Result<()> {
 
     let file = File::open(path)?;
 
-    for sample in SampleReader::new_decode(file, true)? {
+    for sample in SampleReader::new_decode(file, true, true)? {
         let sample = sample?;
 
         batcher.push_sample(&sample.text);

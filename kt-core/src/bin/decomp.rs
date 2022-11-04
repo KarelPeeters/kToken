@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
     let mut bytes = 0;
     let mut lines = 0;
 
-    for sample in SampleReader::new_decode(file, true)? {
+    for sample in SampleReader::new_decode(file, true, true)? {
         let sample = sample?;
 
         writer.write_all(sample.text.as_bytes())?;
