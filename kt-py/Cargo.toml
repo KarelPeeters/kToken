@@ -3,5 +3,11 @@ name = "kt-py"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "ktoken"
+crate-type = ["cdylib"]
+
 [dependencies]
 kt-core = { path = "../kt-core" }
+numpy = "0.17.2"
+pyo3 = { version = "0.17.1", features = ["extension-module"] }
