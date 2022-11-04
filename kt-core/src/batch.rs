@@ -43,22 +43,28 @@ pub struct Bucket {
     tokens: VecDeque<usize>,
 }
 
+pub fn build_tokenizer<I, P>(tokens: I) -> AhoCorasick
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<[u8]>,
+{
+    AhoCorasickBuilder::new()
+        .match_kind(MatchKind::LeftmostLongest)
+        .dfa(true)
+        .build(tokens)
+}
+
 impl Batcher {
     pub fn new<I, P>(batch_size: usize, seq_len: usize, bucket_count: usize, tokens: I) -> Self
     where
         I: IntoIterator<Item = P>,
         P: AsRef<[u8]>,
     {
-        let aho = AhoCorasickBuilder::new()
-            .match_kind(MatchKind::LeftmostLongest)
-            .dfa(true)
-            .build(tokens);
-
         Self {
             batch_size,
             seq_len,
             bucket_count,
-            aho,
+            aho: build_tokenizer(tokens),
             rng: SmallRng::from_entropy(),
             stats: Stats::default(),
             buckets: VecDeque::default(),

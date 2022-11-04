@@ -2,15 +2,19 @@ use std::fs::File;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
+use aho_corasick::AhoCorasick;
 use flume::{Receiver, RecvError, SendError, Sender};
-use numpy::PyArray2;
+use itertools::Itertools;
+use numpy::IntoPyArray;
+use numpy::{PyArray1, PyArray2};
 use pyo3::prelude::*;
 
-use kt_core::batch::{Batch, Batcher};
+use kt_core::batch::{build_tokenizer, Batch, Batcher};
 use kt_core::sample::SampleReader;
 
 #[pymodule]
 fn ktoken(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Tokenizer>()?;
     m.add_class::<BatchTokenReader>()?;
     Ok(())
 }
@@ -20,9 +24,27 @@ struct BatchTokenReader {
     receiver: Receiver<Message>,
 }
 
-enum Message {
-    Batch(Batch),
-    Error(std::io::Error),
+#[pyclass]
+struct Tokenizer {
+    aho: AhoCorasick,
+}
+
+#[pymethods]
+impl Tokenizer {
+    #[new]
+    fn new(tokens: Vec<Vec<u8>>) -> Self {
+        Tokenizer {
+            aho: build_tokenizer(&tokens),
+        }
+    }
+
+    fn tokenize<'py>(&self, py: Python<'py>, s: &str) -> &'py PyArray1<i32> {
+        self.aho
+            .find_iter(s)
+            .map(|m| m.pattern() as i32)
+            .collect_vec()
+            .into_pyarray(py)
+    }
 }
 
 #[pymethods]
@@ -69,6 +91,11 @@ impl BatchTokenReader {
 
         Ok(Some(PyArray2::from_owned_array(py, batch.tokens)))
     }
+}
+
+enum Message {
+    Batch(Batch),
+    Error(std::io::Error),
 }
 
 fn batcher_thread_main(batcher: Batcher, sender: Sender<Message>, data_paths: Vec<PathBuf>) {

@@ -3,6 +3,12 @@ from typing import List, Optional
 import numpy as np
 
 
+class Tokenizer:
+    def __init__(self, tokens: List[List[int]]): ...
+
+    def tokenize(self, s: str) -> np.ndarray: ...
+
+
 class BatchTokenReader:
     def __init__(
             self,

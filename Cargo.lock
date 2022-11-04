@@ -223,6 +223,7 @@ version = "0.1.0"
 dependencies = [
  "aho-corasick",
  "flume",
+ "itertools",
  "kt-core",
  "numpy",
  "pyo3",
