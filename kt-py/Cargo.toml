@@ -9,5 +9,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 kt-core = { path = "../kt-core" }
+
 numpy = "0.17.2"
 pyo3 = { version = "0.17.1", features = ["extension-module"] }
+
+flume = "0.10.14"

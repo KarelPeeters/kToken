@@ -1,3 +1,5 @@
 pub mod iter;
-pub mod sample;
 pub mod unicode;
+
+pub mod batch;
+pub mod sample;
