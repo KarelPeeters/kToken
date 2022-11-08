@@ -4,12 +4,12 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use clap::Parser;
 use itertools::Itertools;
 use ndarray::{s, Array2};
 use serde::Serialize;
 
+use kt_core::batch::build_tokenizer;
 use kt_core::iter::FlatRepeatResult;
 use kt_core::sample::SampleReader;
 
@@ -72,7 +72,7 @@ fn main() -> std::io::Result<()> {
         .map(|c| (c as char).is_whitespace())
         .collect_vec();
 
-    let mut aho = build_ac(&tokens);
+    let mut aho = build_tokenizer(&tokens);
 
     let mut bigram_count: Array2<Count> = Array2::zeros((max_tokens, max_tokens));
     let mut tokens_since_add = 0;
@@ -148,7 +148,7 @@ fn main() -> std::io::Result<()> {
             // invalidate state
             tokens_since_add = 0;
             samples_since_add = 0;
-            aho = build_ac(&tokens);
+            aho = build_tokenizer(&tokens);
 
             top_count = 0; // will immediately be set when incrementing again
             top_index = None;
@@ -186,11 +186,4 @@ fn main() -> std::io::Result<()> {
     vocab_writer.flush()?;
 
     Ok(())
-}
-
-fn build_ac(tokens: &[Vec<u8>]) -> AhoCorasick {
-    AhoCorasickBuilder::new()
-        .match_kind(MatchKind::LeftmostLongest)
-        .dfa(true)
-        .build(tokens)
 }
