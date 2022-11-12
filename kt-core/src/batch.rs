@@ -48,6 +48,7 @@ where
     I: IntoIterator<Item = P>,
     P: AsRef<[u8]>,
 {
+    // TODO this silently skips bytes that don't match any tokens, is that okay?
     AhoCorasickBuilder::new()
         .match_kind(MatchKind::LeftmostLongest)
         .dfa(true)
@@ -60,6 +61,13 @@ impl Batcher {
         I: IntoIterator<Item = P>,
         P: AsRef<[u8]>,
     {
+        assert!(batch_size > 0, "Batch size cannot be zero");
+        assert!(seq_len > 0, "Sequence length cannot be zero");
+        assert!(
+            bucket_count >= batch_size,
+            "Bucket count must be >= batch size"
+        );
+
         Self {
             batch_size,
             seq_len,
