@@ -172,6 +172,9 @@ fn main() -> std::io::Result<()> {
                 unigram_count[top_b] -= top_count;
             }
 
+            // TODO non-greedy tokenization (eg. try to capture as many bytes as possible per 3 tokens instead of only 1)
+            //   but then what about ping-pong stuff where the first token can constantly jump to a different short one?
+            //   only do non-greedy search per-"word"? kind of lame
             // TODO immediately drop tokens with counts that reach zero
             // TODO have some variance estimate for token counts, and only remove tokens below eg. 2*sigma
             // TODO immediately add all tokens with counts > over threshold
