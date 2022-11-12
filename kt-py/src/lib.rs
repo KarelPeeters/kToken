@@ -121,7 +121,7 @@ fn batcher_thread_main_inner(
     sender: &Sender<Message>,
     data_paths: Vec<PathBuf>,
 ) -> std::io::Result<()> {
-    loop {
+    'outer: loop {
         let mut all_empty = true;
 
         for path in &data_paths {
@@ -137,7 +137,7 @@ fn batcher_thread_main_inner(
                     match sender.send(Message::Batch(batch)) {
                         Ok(()) => {}
                         // receiver got closed, we can stop as well
-                        Err(SendError(_)) => break,
+                        Err(SendError(_)) => break 'outer,
                     }
                 }
             }
